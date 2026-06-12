@@ -1,0 +1,22 @@
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# Phase 1: Core & Compliance
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+cryptography
+python-multipart
+
+# Phase 2: Multimodal Pipeline
+mediapipe
+faster-whisper
+opencv-python
+librosa
+soundfile
+
+# PyTorch (CUDA 12.1 for RTX 4050)
+torch
+torchvision
+torchaudio
