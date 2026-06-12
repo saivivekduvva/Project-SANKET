@@ -1,0 +1,112 @@
+/* src/index.css */
+:root {
+  /* Minimalist Color Palette */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8F8F9;
+  --text-primary: #1C1C1E;
+  --text-secondary: #4A4A4E;
+  --border-light: #E5E5EA;
+  --border-dark: #1C1C1E;
+  --accent: #5E5CE6;
+  --accent-muted: #E8E8F2;
+  
+  /* Status Colors */
+  --status-baselining: #FF9500;
+  --status-active: #34C759;
+
+  /* Typography */
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Utilities */
+h1 {
+  font-size: 4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+/* Base Layout Containers */
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 4rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Minimalist Card Design */
+.card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02);
+}
+
+/* Buttons */
+button {
+  font-family: var(--font-family);
+  font-weight: 500;
+  font-size: 0.9rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+button.primary {
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+button.primary:hover {
+  background-color: #000;
+  transform: translateY(-1px);
+}
+
+button.outline {
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-dark);
+}
+
+button.outline:hover {
+  background-color: var(--bg-secondary);
+}

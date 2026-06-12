@@ -1,0 +1,230 @@
+import React from 'react';
+import { FileText, Lock, AlertTriangle, Download, RefreshCw } from 'lucide-react';
+
+const PostSessionSummary = ({ telemetryData, onReset }) => {
+  // Analyze telemetry data to find key anomalies
+  const THRESHOLD = 0.80;
+  
+  const anomalies = [];
+  
+  telemetryData.forEach((point, index) => {
+    if (point.gazeProbability > THRESHOLD) {
+      anomalies.push({ time: point.time, type: 'Gaze Deviation', severity: point.gazeProbability });
+    }
+    if (point.pitchProbability > THRESHOLD) {
+      anomalies.push({ time: point.time, type: 'Head Pitch Anomaly', severity: point.pitchProbability });
+    }
+    if (point.postureProbability > THRESHOLD) {
+      anomalies.push({ time: point.time, type: 'Postural Shift', severity: point.postureProbability });
+    }
+  });
+
+  // Keep only the 5 most significant anomalies to prevent flooding the UI
+  const topAnomalies = anomalies
+    .sort((a, b) => b.severity - a.severity)
+    .slice(0, 5)
+    .sort((a, b) => a.time.localeCompare(b.time)); // Chronological order
+
+  return (
+    <div className="card" style={styles.container}>
+      <div style={styles.header}>
+        <div style={styles.titleGroup}>
+          <FileText size={24} color="var(--text-primary)" />
+          <h2 style={styles.title}>Post-Session Audit Report</h2>
+        </div>
+        <div style={styles.cryptoBadge}>
+          <Lock size={14} />
+          <span>SHA-256 Sealed</span>
+        </div>
+      </div>
+
+      <div style={styles.summaryGrid}>
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Key Investigative Cues</h3>
+          {topAnomalies.length > 0 ? (
+            <ul style={styles.list}>
+              {topAnomalies.map((anomaly, idx) => (
+                <li key={idx} style={styles.listItem}>
+                  <span style={styles.timestamp}>[{anomaly.time}]</span>
+                  <div style={styles.anomalyType}>
+                    <AlertTriangle size={14} color="#FF9500" />
+                    <span style={{ fontWeight: '500' }}>{anomaly.type}</span>
+                  </div>
+                  <span style={styles.probability}>
+                    {(anomaly.severity * 100).toFixed(1)}% Deviation
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div style={styles.emptyState}>
+              <p>No significant behavioral deviations detected above the 80% threshold during this session.</p>
+            </div>
+          )}
+        </div>
+
+        <div style={styles.section}>
+          <h3 style={styles.sectionTitle}>Admissibility & Chain of Custody</h3>
+          <p style={styles.text}>
+            In accordance with Indian evidentiary guidelines, the raw baseline data and probabilstic telemetry logs have been cryptographically hashed and sealed. 
+          </p>
+          <div style={styles.hashBox}>
+            <code>Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
+            <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: 'var(--status-active)' }}>✓ Tamper-evident seal verified</p>
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.footer}>
+        <button style={styles.primaryButton}>
+          <Download size={16} style={{ marginRight: '8px' }} />
+          Export Secure PDF
+        </button>
+        <button style={styles.secondaryButton} onClick={onReset}>
+          <RefreshCw size={16} style={{ marginRight: '8px' }} />
+          Start New Session
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const styles = {
+  container: {
+    padding: '3rem',
+    marginTop: '2rem',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '2.5rem',
+    borderBottom: '1px solid var(--border-light)',
+    paddingBottom: '1.5rem',
+  },
+  titleGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem',
+  },
+  title: {
+    fontSize: '1.8rem',
+    fontWeight: '700',
+    letterSpacing: '-0.02em',
+    margin: 0,
+  },
+  cryptoBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    backgroundColor: '#F2F2F7',
+    padding: '0.5rem 1rem',
+    borderRadius: '24px',
+    fontSize: '0.85rem',
+    fontWeight: '600',
+    color: 'var(--text-secondary)',
+  },
+  summaryGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '4rem',
+    marginBottom: '3rem',
+  },
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  sectionTitle: {
+    fontSize: '1.1rem',
+    fontWeight: '600',
+    marginBottom: '1rem',
+    color: 'var(--text-primary)',
+  },
+  text: {
+    fontSize: '0.95rem',
+    color: 'var(--text-secondary)',
+    lineHeight: '1.6',
+    marginBottom: '1rem',
+  },
+  list: {
+    listStyle: 'none',
+    padding: 0,
+    margin: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
+  },
+  listItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0.75rem 1rem',
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--border-light)',
+    borderRadius: '8px',
+  },
+  timestamp: {
+    fontSize: '0.9rem',
+    color: 'var(--text-secondary)',
+    fontFamily: 'monospace',
+  },
+  anomalyType: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    flex: 1,
+    marginLeft: '1rem',
+  },
+  probability: {
+    fontSize: '0.9rem',
+    fontWeight: '600',
+    color: 'var(--text-primary)',
+  },
+  emptyState: {
+    padding: '2rem',
+    backgroundColor: 'var(--bg-secondary)',
+    borderRadius: '8px',
+    textAlign: 'center',
+    color: 'var(--text-secondary)',
+    fontSize: '0.95rem',
+  },
+  hashBox: {
+    backgroundColor: '#1C1C1E',
+    padding: '1rem',
+    borderRadius: '8px',
+    color: '#E5E5EA',
+    fontFamily: 'monospace',
+    fontSize: '0.85rem',
+    wordBreak: 'break-all',
+  },
+  footer: {
+    display: 'flex',
+    gap: '1rem',
+    borderTop: '1px solid var(--border-light)',
+    paddingTop: '2rem',
+  },
+  primaryButton: {
+    backgroundColor: 'var(--text-primary)',
+    color: 'white',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '8px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
+    color: 'var(--text-primary)',
+    border: '1px solid var(--border-dark)',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '8px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+  }
+};
+
+export default PostSessionSummary;

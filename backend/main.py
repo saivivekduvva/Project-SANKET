@@ -3,6 +3,7 @@ from core.config import settings
 from db.database import engine
 from db import models
 from api.api_v1.endpoints import compliance, inference
+from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 # Set up database tables
@@ -12,6 +13,15 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="Backend API for Project SANKET Assistive Interview Tool. NOT FOR EVIDENTIARY USE."
+)
+
+# Enable CORS for the React Frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Allow all origins for the hackathon prototype
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include Routers
