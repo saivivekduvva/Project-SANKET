@@ -72,6 +72,32 @@ const PostSessionSummary = ({ telemetryData, onReset }) => {
             <code>Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</code>
             <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: 'var(--status-active)' }}>✓ Tamper-evident seal verified</p>
           </div>
+
+          <div style={{ marginTop: '2rem' }}>
+            <h3 style={styles.sectionTitle}>Case-Record Linkage</h3>
+            <div style={styles.linkageBox}>
+              <div style={styles.linkageRow}>
+                <span style={{ fontWeight: '600' }}>Active Case:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>CR-2026-892 (Financial Fraud)</span>
+              </div>
+              <div style={styles.linkageRow}>
+                <span style={{ fontWeight: '600' }}>Subject ID:</span>
+                <span style={{ color: 'var(--text-secondary)' }}>SUBJ-A (Consent Granted)</span>
+              </div>
+              <button style={styles.smallOutlineBtn}>Attach Log to Record</button>
+            </div>
+          </div>
+          
+          <div style={{ marginTop: '2rem' }}>
+            <h3 style={styles.sectionTitle}>Cross-Session Correlation</h3>
+            <p style={styles.text}>
+              Comparing this session's baseline against Subject A's previous interview (CR-2026-801).
+            </p>
+            <div style={styles.correlationBox}>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Macro-Deviation Detected:</span>
+              <span style={{ fontWeight: '600', color: '#FF9500' }}>Baseline Resting Pitch +12°</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -224,6 +250,38 @@ const styles = {
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
+  },
+  linkageBox: {
+    backgroundColor: 'var(--bg-secondary)',
+    border: '1px solid var(--border-light)',
+    borderRadius: '8px',
+    padding: '1rem',
+  },
+  linkageRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '0.5rem',
+    fontSize: '0.9rem',
+  },
+  smallOutlineBtn: {
+    marginTop: '1rem',
+    width: '100%',
+    backgroundColor: 'transparent',
+    border: '1px solid var(--text-primary)',
+    color: 'var(--text-primary)',
+    padding: '0.5rem',
+    borderRadius: '4px',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  correlationBox: {
+    backgroundColor: 'rgba(255, 149, 0, 0.1)',
+    border: '1px solid #FF9500',
+    borderRadius: '8px',
+    padding: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.25rem',
   }
 };
 

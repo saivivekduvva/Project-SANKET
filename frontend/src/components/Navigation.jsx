@@ -1,7 +1,7 @@
 import React from 'react';
 import { Camera, ShieldCheck, Settings } from 'lucide-react';
 
-const Navigation = ({ sessionActive, onToggleSession }) => {
+const Navigation = ({ sessionActive, onToggleSession, currentView, setCurrentView }) => {
   return (
     <nav style={styles.nav}>
       <div style={styles.logoContainer}>
@@ -15,9 +15,19 @@ const Navigation = ({ sessionActive, onToggleSession }) => {
       </div>
 
       <div style={styles.links}>
-        <span style={styles.link}>Officer Dashboard</span>
+        <span 
+          style={currentView === 'dashboard' ? styles.linkActive : styles.link}
+          onClick={() => setCurrentView('dashboard')}
+        >
+          Officer Dashboard
+        </span>
         <span style={styles.link}>Audit Logs</span>
-        <span style={styles.link}>Compliance</span>
+        <span 
+          style={currentView === 'compliance' ? styles.linkActive : styles.link}
+          onClick={() => setCurrentView('compliance')}
+        >
+          Compliance
+        </span>
         <span style={styles.link}>Settings</span>
       </div>
 
@@ -71,10 +81,17 @@ const styles = {
     gap: '2rem',
   },
   link: {
-    fontSize: '0.9rem',
+    fontSize: '0.95rem',
     color: 'var(--text-secondary)',
     cursor: 'pointer',
     fontWeight: '500',
+    transition: 'color 0.2s',
+  },
+  linkActive: {
+    fontSize: '0.95rem',
+    color: 'var(--text-primary)',
+    cursor: 'pointer',
+    fontWeight: '600',
   },
   actions: {
     display: 'flex',

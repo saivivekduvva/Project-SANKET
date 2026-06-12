@@ -3,12 +3,15 @@ import Navigation from './components/Navigation';
 import TelemetryCharts from './components/TelemetryCharts';
 import InsightsPanel from './components/InsightsPanel';
 import PostSessionSummary from './components/PostSessionSummary';
+import ComplianceDashboard from './components/ComplianceDashboard';
+import LiveTranscript from './components/LiveTranscript';
 
 function App() {
   const [sessionActive, setSessionActive] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const [engineStatus, setEngineStatus] = useState('baselining'); // 'baselining' or 'monitoring'
   const [telemetryData, setTelemetryData] = useState([]);
+  const [currentView, setCurrentView] = useState('dashboard');
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -140,11 +143,19 @@ function App() {
 
   return (
     <div className="app-container">
-      <Navigation sessionActive={sessionActive} onToggleSession={handleToggleSession} />
+      <Navigation 
+        sessionActive={sessionActive} 
+        onToggleSession={handleToggleSession} 
+        currentView={currentView}
+        setCurrentView={setCurrentView}
+      />
       
       <main className="main-content">
-        {/* Large Typography Hero Section mimicking the design */}
-        <section style={styles.hero}>
+        {currentView === 'compliance' ? (
+          <ComplianceDashboard />
+        ) : (
+          <>
+            <section style={styles.hero}>
           <h1 style={styles.heroTitle}>
             CONDUCT ETHICAL<br />
             INTERVIEWS WITH<br />
@@ -166,9 +177,10 @@ function App() {
         ) : (
           <>
             <section style={styles.grid}>
-              {/* Left Column: Video Feed */}
-          <div className="card" style={styles.videoCard}>
-            <div style={styles.videoHeader}>
+              {/* Left Column: Video Feed & Transcript */}
+              <div style={styles.leftColumn}>
+                <div className="card" style={styles.videoCard}>
+                  <div style={styles.videoHeader}>
               <span style={{ fontWeight: '600', fontSize: '1.1rem', letterSpacing: '-0.01em' }}>Live Feed (Subject A)</span>
               {sessionActive && <span style={styles.recordingDot}></span>}
             </div>
@@ -187,11 +199,13 @@ function App() {
                 style={{ ...styles.video, display: sessionActive ? 'block' : 'none' }} 
               />
               {/* Hidden canvas for extracting frames */}
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-            </div>
-          </div>
+                    <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  </div>
+                </div>
+                <LiveTranscript sessionActive={sessionActive} />
+              </div>
 
-          {/* Right Column: Telemetry */}
+              {/* Right Column: Telemetry */}
           <div style={styles.telemetryWrapper}>
             <TelemetryCharts data={telemetryData} status={engineStatus} />
           </div>
@@ -206,6 +220,8 @@ function App() {
         </section>
         </>
         )}
+      </>
+      )}
       </main>
     </div>
   );
@@ -261,7 +277,10 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: '1fr 1.2fr',
     gap: '2rem',
-    height: '450px',
+  },
+  leftColumn: {
+    display: 'flex',
+    flexDirection: 'column',
   },
   videoCard: {
     display: 'flex',
