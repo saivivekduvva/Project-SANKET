@@ -4,6 +4,9 @@ from typing import Any
 import cv2
 import numpy as np
 import io
+import os
+import tempfile
+import shutil
 
 from db.database import get_db
 from db import models
@@ -72,3 +75,28 @@ async def process_video_upload(
         final_output["cues"][cue_name] = prob_result
         
     return final_output
+
+@router.post("/transcribe_chunk")
+async def transcribe_chunk(file: UploadFile = File(...)):
+    """
+    Accepts a short audio chunk from the frontend and returns faster-whisper transcription.
+    """
+    temp_file_path = ""
+    try:
+        # Create a temporary file to save the audio
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_file:
+            shutil.copyfileobj(file.file, temp_file)
+            temp_file_path = temp_file.name
+        
+        # Process the audio file using the whisper engine
+        result = audio_pipeline.transcribe_file(temp_file_path)
+        
+        # Clean up temp file
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+            
+        return result
+    except Exception as e:
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        return {"error": str(e), "text": "", "language": "unknown"}

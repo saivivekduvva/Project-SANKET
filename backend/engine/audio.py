@@ -20,11 +20,18 @@ class AudioPipeline:
         
         # 1. ASR (Whisper) - Track 2
         # Use beam_size=1 for greedy decoding to minimize latency
-        segments, info = self.model.transcribe(audio_data, beam_size=1)
-        transcript = " ".join([segment.text for segment in segments])
+        segments, info = self.model.transcribe(audio_data, beam_size=5)
+        transcript = " ".join([segment.text for segment in segments]).strip()
+        
+        # Map common ISO codes to display names
+        lang_map = {
+            'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'ta': 'Tamil', 
+            'te': 'Telugu', 'mr': 'Marathi', 'gu': 'Gujarati', 'ur': 'Urdu',
+            'ml': 'Malayalam', 'kn': 'Kannada', 'pa': 'Punjabi'
+        }
         
         results["transcript"] = transcript
-        results["language"] = info.language
+        results["language"] = lang_map.get(info.language, info.language)
         results["language_probability"] = info.language_probability
         
         # 2. Vocal Features (Librosa) - Track 1/Acoustic
@@ -46,5 +53,27 @@ class AudioPipeline:
             results["mean_pitch_hz"] = float(np.nanmean(valid_f0))
         else:
             results["mean_pitch_hz"] = 0.0
+            
+        return results
+
+    def transcribe_file(self, file_path: str) -> Dict[str, Any]:
+        """Transcribes an audio file path directly"""
+        results = {}
+        try:
+            segments, info = self.model.transcribe(file_path, beam_size=5)
+            transcript = " ".join([segment.text for segment in segments]).strip()
+            
+            lang_map = {
+                'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'ta': 'Tamil', 
+                'te': 'Telugu', 'mr': 'Marathi', 'gu': 'Gujarati', 'ur': 'Urdu',
+                'ml': 'Malayalam', 'kn': 'Kannada', 'pa': 'Punjabi'
+            }
+            
+            results["text"] = transcript
+            results["language"] = lang_map.get(info.language, info.language)
+            results["probability"] = info.language_probability
+        except Exception as e:
+            print(f"Transcription error: {e}")
+            results = {"text": "", "language": "unknown", "probability": 0.0}
             
         return results

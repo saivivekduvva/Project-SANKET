@@ -12,11 +12,13 @@ function App() {
   const [engineStatus, setEngineStatus] = useState('baselining'); // 'baselining' or 'monitoring'
   const [telemetryData, setTelemetryData] = useState([]);
   const [currentView, setCurrentView] = useState('dashboard');
+  const [liveLines, setLiveLines] = useState([]);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const pollingRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
 
   // The backend requires a valid session_id. We seeded 1 earlier.
   const SESSION_ID = 1;
@@ -32,17 +34,35 @@ function App() {
 
   const startSession = async () => {
     try {
-      // 1. Access Webcam
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      // 1. Access Webcam and Microphone
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       videoRef.current.srcObject = stream;
       streamRef.current = stream;
       
       setSessionActive(true);
       setSessionEnded(false);
       setTelemetryData([]);
+      setLiveLines([]);
       
       // 2. Start polling the backend every 500ms (2 FPS for prototype)
       pollingRef.current = setInterval(captureAndSendFrame, 500);
+
+      // 3. Start Audio Recording (5-second chunks)
+      try {
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        mediaRecorderRef.current = mediaRecorder;
+        
+        mediaRecorder.ondataavailable = async (e) => {
+          if (e.data.size > 0) {
+            sendAudioChunk(e.data);
+          }
+        };
+        
+        // Start recording, and slice data every 5000ms
+        mediaRecorder.start(5000);
+      } catch (err) {
+        console.error("Audio recording not supported or failed:", err);
+      }
 
     } catch (err) {
       console.error("Error accessing webcam: ", err);
@@ -54,6 +74,9 @@ function App() {
     setSessionActive(false);
     setSessionEnded(true);
     if (pollingRef.current) clearInterval(pollingRef.current);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
@@ -63,6 +86,7 @@ function App() {
     setSessionEnded(false);
     setEngineStatus('baselining');
     setTelemetryData([]);
+    setLiveLines([]);
   };
 
   // Capture frame and send to FastAPI
@@ -103,6 +127,30 @@ function App() {
     }, 'image/jpeg', 0.8);
   };
 
+  const sendAudioChunk = async (audioBlob) => {
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'chunk.webm');
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/inference/transcribe_chunk', {
+        method: 'POST',
+        body: formData,
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result.text && result.text.trim() !== '') {
+          setLiveLines(prev => [...prev, {
+            time: new Date().toLocaleTimeString([], { hour12: false, second: '2-digit', minute: '2-digit' }),
+            text: result.text,
+            language: result.language
+          }]);
+        }
+      }
+    } catch (err) {
+      console.error("Transcription error:", err);
+    }
+  };
+
   const processBackendResult = (result) => {
     if (!result.cues) return;
 
@@ -137,6 +185,9 @@ function App() {
   useEffect(() => {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
       if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
     };
   }, []);
@@ -202,7 +253,7 @@ function App() {
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
                   </div>
                 </div>
-                <LiveTranscript sessionActive={sessionActive} />
+                <LiveTranscript sessionActive={sessionActive} liveLines={liveLines} />
               </div>
 
               {/* Right Column: Telemetry */}
