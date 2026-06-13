@@ -5,6 +5,8 @@ import InsightsPanel from './components/InsightsPanel';
 import PostSessionSummary from './components/PostSessionSummary';
 import ComplianceDashboard from './components/ComplianceDashboard';
 import LiveTranscript from './components/LiveTranscript';
+import ConsentModal from './components/ConsentModal';
+import { ShieldCheck } from 'lucide-react';
 
 function App() {
   const [sessionActive, setSessionActive] = useState(false);
@@ -13,6 +15,8 @@ function App() {
   const [telemetryData, setTelemetryData] = useState([]);
   const [currentView, setCurrentView] = useState('dashboard');
   const [liveLines, setLiveLines] = useState([]);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [fallbackMode, setFallbackMode] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -28,8 +32,14 @@ function App() {
     if (sessionActive) {
       stopSession();
     } else {
-      startSession();
+      setShowConsentModal(true);
     }
+  };
+
+  const handleConsentComplete = (isConsentGiven) => {
+    setShowConsentModal(false);
+    setFallbackMode(!isConsentGiven);
+    startSession();
   };
 
   const startSession = async () => {
@@ -47,19 +57,36 @@ function App() {
       // 2. Start polling the backend every 500ms (2 FPS for prototype)
       pollingRef.current = setInterval(captureAndSendFrame, 500);
 
-      // 3. Start Audio Recording (5-second chunks)
+      // 3. Start Audio Recording (5-second chunks with valid headers)
       try {
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        mediaRecorderRef.current = mediaRecorder;
-        
-        mediaRecorder.ondataavailable = async (e) => {
-          if (e.data.size > 0) {
-            sendAudioChunk(e.data);
-          }
+        const startRecordingChunk = () => {
+          // Check if stream is still alive before creating a new recorder
+          if (!streamRef.current || !streamRef.current.active) return;
+          
+          const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
+          mediaRecorderRef.current = mediaRecorder;
+          
+          mediaRecorder.ondataavailable = async (e) => {
+            if (e.data.size > 0) {
+              sendAudioChunk(e.data);
+            }
+          };
+          
+          mediaRecorder.start();
+          
+          // Stop after 5 seconds to trigger ondataavailable and generate a full file with headers
+          setTimeout(() => {
+            if (mediaRecorder.state !== 'inactive') {
+              mediaRecorder.stop();
+              // Recursively start the next chunk if the session is still active
+              if (streamRef.current && streamRef.current.active) {
+                 startRecordingChunk();
+              }
+            }
+          }, 5000);
         };
         
-        // Start recording, and slice data every 5000ms
-        mediaRecorder.start(5000);
+        startRecordingChunk();
       } catch (err) {
         console.error("Audio recording not supported or failed:", err);
       }
@@ -79,6 +106,20 @@ function App() {
     }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const handleDistress = async () => {
+    try {
+      await fetch('http://localhost:8000/api/v1/compliance/vulnerability', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: 1, officer_id: 1234, is_vulnerable: true, reason: "Officer triggered distress halt" })
+      });
+      setEngineStatus('HALTED (Distress)');
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -194,9 +235,12 @@ function App() {
 
   return (
     <div className="app-container">
+      {showConsentModal && <ConsentModal onComplete={handleConsentComplete} />}
+      
       <Navigation 
         sessionActive={sessionActive} 
         onToggleSession={handleToggleSession} 
+        onDistress={handleDistress}
         currentView={currentView}
         setCurrentView={setCurrentView}
       />
@@ -227,7 +271,7 @@ function App() {
           <PostSessionSummary telemetryData={telemetryData} onReset={resetToHome} />
         ) : (
           <>
-            <section style={styles.grid}>
+            <section className="responsive-grid">
               {/* Left Column: Video Feed & Transcript */}
               <div style={styles.leftColumn}>
                 <div className="card" style={styles.videoCard}>
@@ -257,18 +301,30 @@ function App() {
               </div>
 
               {/* Right Column: Telemetry */}
-          <div style={styles.telemetryWrapper}>
-            <TelemetryCharts data={telemetryData} status={engineStatus} />
-          </div>
-        </section>
+              {fallbackMode ? (
+                <div style={{...styles.telemetryWrapper, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-light)'}}>
+                  <div style={{textAlign: 'center', padding: '2rem'}}>
+                    <ShieldCheck size={48} color="var(--status-active)" style={{marginBottom: '1rem'}} />
+                    <h3 style={{color: 'var(--text-primary)', marginBottom: '0.5rem'}}>Fallback Mode Active</h3>
+                    <p style={{color: 'var(--text-secondary)'}}>Consent was denied. AI behavioral telemetry is strictly disabled in compliance with the DPDP Act 2023.</p>
+                  </div>
+                </div>
+              ) : (
+                <div style={styles.telemetryWrapper}>
+                  <TelemetryCharts data={telemetryData} status={engineStatus} />
+                </div>
+              )}
+            </section>
 
         {/* Real-time Interpretation Panel */}
-        <section>
-          <InsightsPanel 
-            latestData={telemetryData.length > 0 ? telemetryData[telemetryData.length - 1] : null} 
-            isBaselining={engineStatus === 'baselining'} 
-          />
-        </section>
+        {!fallbackMode && (
+          <section>
+            <InsightsPanel 
+              latestData={telemetryData.length > 0 ? telemetryData[telemetryData.length - 1] : null} 
+              isBaselining={engineStatus === 'baselining'} 
+            />
+          </section>
+        )}
         </>
         )}
       </>
@@ -323,11 +379,6 @@ const styles = {
     lineHeight: '1.6',
     color: 'var(--text-secondary)',
     fontWeight: '400',
-  },
-  grid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1.2fr',
-    gap: '2rem',
   },
   leftColumn: {
     display: 'flex',

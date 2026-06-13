@@ -1,7 +1,72 @@
-import React from 'react';
-import { FileText, Lock, AlertTriangle, Download, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Lock, AlertTriangle, Download, RefreshCw, Trash2, Key } from 'lucide-react';
 
 const PostSessionSummary = ({ telemetryData, onReset }) => {
+  const [showExportForm, setShowExportForm] = useState(false);
+  const [authorizingOfficerId, setAuthorizingOfficerId] = useState('');
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [erased, setErased] = useState(false);
+
+  const handleExport = async () => {
+    if (!authorizingOfficerId) {
+      alert("Authorizing Officer ID is required for 2-officer export.");
+      return;
+    }
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/compliance/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: 1,
+          requesting_officer_id: 1234, // Mocked IO
+          authorizing_officer_id: parseInt(authorizingOfficerId),
+          data_payload: "Session 1 Telemetry Data"
+        })
+      });
+      
+      if (response.ok) {
+        setExportSuccess(true);
+        setTimeout(() => {
+          window.print(); // Trigger PDF print with signed data
+        }, 500);
+      } else {
+        alert("Export failed: Ensure requesting and authorizing officers are different.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleErasure = async () => {
+    if (window.confirm("WARNING: This will cryptographically destroy the session key. Data will be permanently unrecoverable. Proceed?")) {
+      try {
+        const response = await fetch('http://localhost:8000/api/v1/compliance/erase_session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: 1, officer_id: 1234 })
+        });
+        if (response.ok) {
+          setErased(true);
+          setTimeout(() => {
+            onReset();
+          }, 2000);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  if (erased) {
+    return (
+      <div className="card" style={{...styles.container, textAlign: 'center', padding: '5rem'}}>
+        <Trash2 size={48} color="#FF3B30" style={{marginBottom: '1rem'}} />
+        <h2>Session Cryptographically Erased</h2>
+        <p style={{color: 'var(--text-secondary)'}}>The encryption keys have been permanently destroyed. Returning to home...</p>
+      </div>
+    );
+  }
   // Analyze telemetry data to find key anomalies
   const THRESHOLD = 0.80;
   
@@ -102,13 +167,45 @@ const PostSessionSummary = ({ telemetryData, onReset }) => {
       </div>
 
       <div style={styles.footer}>
-        <button style={styles.primaryButton}>
-          <Download size={16} style={{ marginRight: '8px' }} />
-          Export Secure PDF
-        </button>
+        {!showExportForm && !exportSuccess && (
+          <button style={styles.primaryButton} onClick={() => setShowExportForm(true)}>
+            <Download size={16} style={{ marginRight: '8px' }} />
+            Export Secure PDF
+          </button>
+        )}
+        
+        {showExportForm && !exportSuccess && (
+          <div style={styles.exportForm}>
+            <Key size={16} color="var(--text-secondary)" />
+            <input 
+              type="text" 
+              placeholder="Enter Authorizing Officer ID (e.g. 9999)" 
+              style={styles.input}
+              value={authorizingOfficerId}
+              onChange={(e) => setAuthorizingOfficerId(e.target.value)}
+            />
+            <button style={{...styles.primaryButton, padding: '0.5rem 1rem'}} onClick={handleExport}>
+              Authorize & Download
+            </button>
+          </div>
+        )}
+        
+        {exportSuccess && (
+          <span style={{color: 'var(--status-active)', fontWeight: '600', alignSelf: 'center'}}>
+            ✓ Export Authorized & Signed
+          </span>
+        )}
+
         <button style={styles.secondaryButton} onClick={onReset}>
           <RefreshCw size={16} style={{ marginRight: '8px' }} />
           Start New Session
+        </button>
+        
+        <div style={{ flex: 1 }}></div>
+        
+        <button style={styles.dangerGhostButton} onClick={handleErasure}>
+          <Trash2 size={16} style={{ marginRight: '8px' }} />
+          Erase Session
         </button>
       </div>
     </div>
@@ -282,6 +379,34 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '0.25rem',
+  },
+  exportForm: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    backgroundColor: 'var(--bg-secondary)',
+    padding: '0.5rem 1rem',
+    borderRadius: '8px',
+    border: '1px solid var(--border-light)',
+  },
+  input: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: 'var(--text-primary)',
+    outline: 'none',
+    fontSize: '0.9rem',
+    width: '250px',
+  },
+  dangerGhostButton: {
+    backgroundColor: 'transparent',
+    color: '#FF3B30',
+    border: 'none',
+    padding: '0.75rem 1.5rem',
+    borderRadius: '8px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
   }
 };
 

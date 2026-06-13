@@ -110,3 +110,112 @@ button.outline {
 button.outline:hover {
   background-color: var(--bg-secondary);
 }
+
+/* Navigation Links & Buttons */
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 4rem;
+  border-bottom: 1px solid var(--border-light);
+  background-color: var(--bg-primary);
+}
+
+.nav-links {
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-link {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+}
+
+.nav-link.active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.nav-btn {
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 24px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background-color: #000;
+  transform: translateY(-1px);
+}
+
+.nav-btn.danger {
+  background-color: #FF3B30;
+  color: white;
+}
+
+.nav-btn.danger:hover {
+  background-color: #d92b22;
+}
+
+.nav-btn.danger-outline {
+  background-color: transparent;
+  color: #FF3B30;
+  border: 1px solid #FF3B30;
+}
+
+.nav-btn.danger-outline:hover {
+  background-color: rgba(255, 59, 48, 0.1);
+}
+
+/* Responsive Layout */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 2rem;
+}
+
+@media (max-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: 1fr;
+  }
+  .main-content {
+    padding: 1.5rem 2rem;
+  }
+  .nav {
+    padding: 1.5rem 2rem;
+  }
+  h1 {
+    font-size: 3.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .nav {
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+  .nav-links {
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .main-content {
+    padding: 1rem;
+  }
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+  }
+}

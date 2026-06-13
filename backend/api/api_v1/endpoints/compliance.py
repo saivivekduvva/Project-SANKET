@@ -110,3 +110,32 @@ def cryptographic_erasure(request: EraseRequest, db: Session = Depends(get_db)) 
     db.commit()
     
     return {"message": "Session artifacts cryptographically erased."}
+
+class VulnerabilityRequest(BaseModel):
+    session_id: int
+    officer_id: int
+    is_vulnerable: bool
+    reason: str
+
+@router.post("/vulnerability")
+def toggle_vulnerability(request: VulnerabilityRequest, db: Session = Depends(get_db)) -> Any:
+    """
+    Toggles the vulnerability/distress status of the subject.
+    If true, inference is halted immediately.
+    """
+    session = db.query(models.InterviewSession).filter(models.InterviewSession.id == request.session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    session.vulnerability_triggered = request.is_vulnerable
+    
+    log_entry = audit_logger.create_log_entry(
+        event_type="VULNERABILITY_TRIGGERED" if request.is_vulnerable else "VULNERABILITY_CLEARED",
+        user_id=str(request.officer_id),
+        data={"session_id": request.session_id, "reason": request.reason}
+    )
+    db_log = models.AuditLog(**log_entry)
+    db.add(db_log)
+    db.commit()
+    
+    return {"message": "Vulnerability status updated", "halt_inference": request.is_vulnerable}
