@@ -44,6 +44,31 @@ def record_consent(request: ConsentRequest, db: Session = Depends(get_db)) -> An
 
     return {"message": "Consent recorded successfully", "consent_id": db_consent.id, "fallback_mode": not request.consent_given}
 
+class SessionCreateRequest(BaseModel):
+    officer_id: int
+    subject_id: int
+    consent_id: int
+    fallback_mode_active: bool
+
+@router.post("/session", status_code=201)
+def create_session(request: SessionCreateRequest, db: Session = Depends(get_db)) -> Any:
+    """
+    Creates a dynamic interview session to avoid hardcoding ID 1.
+    """
+    session = models.InterviewSession(
+        officer_id=request.officer_id,
+        subject_id=request.subject_id,
+        consent_id=request.consent_id,
+        session_key="simulated_tpm_key_" + str(request.subject_id),
+        fallback_mode_active=request.fallback_mode_active,
+        vulnerability_triggered=False
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    
+    return {"message": "Session created", "session_id": session.id}
+
 class ExportRequest(BaseModel):
     session_id: int
     requesting_officer_id: int

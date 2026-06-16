@@ -22,12 +22,13 @@ const ConsentModal = ({ onComplete }) => {
       });
       
       if (response.ok) {
-        onComplete(isConsentGiven);
+        const result = await response.json();
+        onComplete({ isConsentGiven, consent_id: result.consent_id });
       }
     } catch (err) {
       console.error("Error submitting consent:", err);
       // Fallback for UI if backend is not responsive
-      onComplete(isConsentGiven);
+      onComplete({ isConsentGiven, consent_id: 1 });
     }
     setLoading(false);
   };
