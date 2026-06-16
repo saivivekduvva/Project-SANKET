@@ -17,6 +17,7 @@ function App() {
   const [liveLines, setLiveLines] = useState([]);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [fallbackMode, setFallbackMode] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -27,24 +28,42 @@ function App() {
   // The backend requires a valid session_id. We seeded 1 earlier.
   const SESSION_ID = 1;
 
-  // Toggle Session
-  const handleToggleSession = async () => {
+  const handleStartRecording = () => {
+    setUploadedFile(null);
+    setShowConsentModal(true);
+  };
+
+  const handleUploadData = () => {
+    document.getElementById('data-upload-input').click();
+  };
+
+  const handleStopSession = () => {
     if (sessionActive) {
       stopSession();
-    } else {
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUploadedFile(file);
       setShowConsentModal(true);
     }
+    e.target.value = null;
   };
 
   const handleConsentComplete = (isConsentGiven) => {
     setShowConsentModal(false);
     setFallbackMode(!isConsentGiven);
-    startSession();
+    if (uploadedFile) {
+      startSessionWithFile(uploadedFile);
+    } else {
+      startSessionWithWebcam();
+    }
   };
 
-  const startSession = async () => {
+  const startSessionWithWebcam = async () => {
     try {
-      // 1. Access Webcam and Microphone
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       videoRef.current.srcObject = stream;
       streamRef.current = stream;
@@ -54,13 +73,10 @@ function App() {
       setTelemetryData([]);
       setLiveLines([]);
       
-      // 2. Start polling the backend every 500ms (2 FPS for prototype)
       pollingRef.current = setInterval(captureAndSendFrame, 500);
 
-      // 3. Start Audio Recording (5-second chunks with valid headers)
       try {
         const startRecordingChunk = () => {
-          // Check if stream is still alive before creating a new recorder
           if (!streamRef.current || !streamRef.current.active) return;
           
           const mediaRecorder = new MediaRecorder(streamRef.current, { mimeType: 'audio/webm' });
@@ -74,11 +90,9 @@ function App() {
           
           mediaRecorder.start();
           
-          // Stop after 5 seconds to trigger ondataavailable and generate a full file with headers
           setTimeout(() => {
             if (mediaRecorder.state !== 'inactive') {
               mediaRecorder.stop();
-              // Recursively start the next chunk if the session is still active
               if (streamRef.current && streamRef.current.active) {
                  startRecordingChunk();
               }
@@ -97,6 +111,85 @@ function App() {
     }
   };
 
+  const startSessionWithFile = async (file) => {
+    try {
+      const fileUrl = URL.createObjectURL(file);
+      videoRef.current.src = fileUrl;
+      videoRef.current.srcObject = null;
+      
+      videoRef.current.onplay = () => {
+        if (sessionActive) return; // Prevent multiple triggers
+        
+        const stream = videoRef.current.captureStream ? videoRef.current.captureStream() : videoRef.current.mozCaptureStream();
+        if (!stream) {
+          console.error("captureStream not supported");
+          return;
+        }
+        
+        streamRef.current = stream;
+        
+        setSessionActive(true);
+        setSessionEnded(false);
+        setTelemetryData([]);
+        setLiveLines([]);
+        
+        // 2. Start polling the backend every 500ms (2 FPS for prototype)
+        pollingRef.current = setInterval(captureAndSendFrame, 500);
+
+        // 3. Start Audio Recording (5-second chunks with valid headers)
+        try {
+          const startRecordingChunk = () => {
+            // Check if stream is still alive before creating a new recorder
+            if (!streamRef.current || !streamRef.current.active) return;
+            
+            // Check if there's an audio track
+            const audioTracks = streamRef.current.getAudioTracks();
+            if (audioTracks.length === 0) {
+              console.warn("No audio tracks found in the uploaded file stream.");
+            }
+            
+            const options = MediaRecorder.isTypeSupported('audio/webm') ? { mimeType: 'audio/webm' } : {};
+            const mediaRecorder = new MediaRecorder(streamRef.current, options);
+            mediaRecorderRef.current = mediaRecorder;
+            
+            mediaRecorder.ondataavailable = async (e) => {
+              if (e.data.size > 0) {
+                sendAudioChunk(e.data);
+              }
+            };
+            
+            mediaRecorder.start();
+            
+            // Stop after 5 seconds to trigger ondataavailable and generate a full file with headers
+            setTimeout(() => {
+              if (mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                // Recursively start the next chunk if the session is still active
+                if (streamRef.current && streamRef.current.active) {
+                   startRecordingChunk();
+                }
+              }
+            }, 5000);
+          };
+          
+          startRecordingChunk();
+        } catch (err) {
+          console.error("Audio recording not supported or failed:", err);
+        }
+      };
+      
+      videoRef.current.onended = () => {
+        stopSession();
+      };
+      
+      videoRef.current.play();
+
+    } catch (err) {
+      console.error("Error setting up video file: ", err);
+      alert("Could not process the uploaded file.");
+    }
+  };
+
   const stopSession = () => {
     setSessionActive(false);
     setSessionEnded(true);
@@ -107,6 +200,10 @@ function App() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+    setUploadedFile(null);
   };
 
   const handleDistress = async () => {
@@ -135,6 +232,8 @@ function App() {
     if (!videoRef.current || !canvasRef.current) return;
     
     const video = videoRef.current;
+    if (video.paused || video.ended) return;
+
     const canvas = canvasRef.current;
     
     // Draw current video frame to hidden canvas
@@ -179,6 +278,10 @@ function App() {
       });
       if (response.ok) {
         const result = await response.json();
+        
+        // Discard delayed transcriptions if the video is currently paused
+        if (videoRef.current && videoRef.current.paused) return;
+
         if (result.text && result.text.trim() !== '') {
           setLiveLines(prev => [...prev, {
             time: new Date().toLocaleTimeString([], { hour12: false, second: '2-digit', minute: '2-digit' }),
@@ -193,6 +296,9 @@ function App() {
   };
 
   const processBackendResult = (result) => {
+    // Discard delayed telemetry if the video is currently paused
+    if (videoRef.current && videoRef.current.paused) return;
+
     if (!result.cues) return;
 
     // The backend returns probabilities. If they are null, we are still baselining.
@@ -235,11 +341,20 @@ function App() {
 
   return (
     <div className="app-container">
+      <input 
+        type="file" 
+        id="data-upload-input" 
+        accept="video/*,audio/*" 
+        style={{ display: 'none' }} 
+        onChange={handleFileChange} 
+      />
       {showConsentModal && <ConsentModal onComplete={handleConsentComplete} />}
       
       <Navigation 
         sessionActive={sessionActive} 
-        onToggleSession={handleToggleSession} 
+        onStopSession={handleStopSession} 
+        onStartRecording={handleStartRecording}
+        onUploadData={handleUploadData}
         onDistress={handleDistress}
         currentView={currentView}
         setCurrentView={setCurrentView}
@@ -283,15 +398,21 @@ function App() {
             <div style={styles.videoWrapper}>
               {!sessionActive && (
                 <div style={styles.videoPlaceholder}>
-                  <p style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Click "Start Session" to connect camera and begin telemetry.</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Click "Start Recording" or "Upload Data" to begin telemetry.</p>
                 </div>
               )}
               <video 
                 ref={videoRef} 
                 autoPlay 
                 playsInline 
-                muted 
-                style={{ ...styles.video, display: sessionActive ? 'block' : 'none' }} 
+                controls={sessionActive && !!uploadedFile}
+                muted={!uploadedFile}
+                style={{ 
+                  ...styles.video, 
+                  display: sessionActive ? 'block' : 'none',
+                  transform: uploadedFile ? 'none' : 'scaleX(-1)',
+                  objectFit: uploadedFile ? 'contain' : 'cover'
+                }} 
               />
               {/* Hidden canvas for extracting frames */}
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
@@ -423,8 +544,7 @@ const styles = {
   video: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
-    transform: 'scaleX(-1)', // Mirror webcam
+    backgroundColor: '#000'
   },
   telemetryWrapper: {
     height: '100%',

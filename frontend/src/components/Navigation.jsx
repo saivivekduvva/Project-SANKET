@@ -1,7 +1,7 @@
 import React from 'react';
 import { Camera, ShieldCheck, Settings } from 'lucide-react';
 
-const Navigation = ({ sessionActive, onToggleSession, currentView, setCurrentView, onDistress }) => {
+const Navigation = ({ sessionActive, onStopSession, onStartRecording, onUploadData, currentView, setCurrentView, onDistress }) => {
   return (
     <nav className="nav">
       <div style={styles.logoContainer}>
@@ -38,12 +38,20 @@ const Navigation = ({ sessionActive, onToggleSession, currentView, setCurrentVie
             Halt AI (Distress)
           </button>
         )}
-        <button 
-          className={sessionActive ? 'nav-btn danger' : 'nav-btn'}
-          onClick={onToggleSession}
-        >
-          {sessionActive ? 'End Interview' : 'Start Session'}
-        </button>
+        {sessionActive ? (
+          <button className="nav-btn danger" onClick={onStopSession}>
+            End Interview
+          </button>
+        ) : (
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="nav-btn" onClick={onStartRecording}>
+              Start Recording
+            </button>
+            <button className="nav-btn" onClick={onUploadData}>
+              Upload Data
+            </button>
+          </div>
+        )}
       </div>
     </nav>
   );
