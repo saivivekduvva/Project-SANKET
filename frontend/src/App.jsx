@@ -397,6 +397,25 @@ function App() {
     };
   }, []);
 
+  // Handle tab closing during an active session
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionIdRef.current) {
+        const data = JSON.stringify({
+          session_id: sessionIdRef.current,
+          officer_id: 1 // Mocked officer
+        });
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon('http://localhost:8000/api/v1/compliance/end_session', blob);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   return (
     <div className="app-container">
       <input 
