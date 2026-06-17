@@ -141,7 +141,8 @@ function App() {
       videoRef.current.srcObject = null;
       
       videoRef.current.onplay = () => {
-        if (sessionActive) return; // Prevent multiple triggers
+        // Prevent multiple triggers when unpausing by removing the listener
+        videoRef.current.onplay = null;
         
         const stream = videoRef.current.captureStream ? videoRef.current.captureStream() : videoRef.current.mozCaptureStream();
         if (!stream) {
