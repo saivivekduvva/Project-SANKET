@@ -291,6 +291,9 @@ function App() {
 
     const canvas = canvasRef.current;
     
+    // Prevent DOM exception if video metadata hasn't fully loaded yet
+    if (!video.videoWidth || !video.videoHeight) return;
+    
     // Draw current video frame to hidden canvas
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
