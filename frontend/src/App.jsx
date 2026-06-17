@@ -216,7 +216,7 @@ function App() {
     }
   };
 
-  const stopSession = () => {
+  const stopSession = async () => {
     setSessionActive(false);
     setSessionEnded(true);
     if (pollingRef.current) clearInterval(pollingRef.current);
@@ -230,6 +230,20 @@ function App() {
       videoRef.current.pause();
     }
     setUploadedFile(null);
+
+    // Hit backend to clean up memory and finalize DB
+    try {
+      await fetch('http://localhost:8000/api/v1/compliance/end_session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          session_id: sessionIdRef.current || 1, 
+          officer_id: 1 // Mocked officer
+        })
+      });
+    } catch (err) {
+      console.error("Failed to end session cleanly on backend:", err);
+    }
   };
 
   const handleDistress = async () => {

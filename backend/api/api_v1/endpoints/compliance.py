@@ -69,6 +69,39 @@ def create_session(request: SessionCreateRequest, db: Session = Depends(get_db))
     
     return {"message": "Session created", "session_id": session.id}
 
+class EndSessionRequest(BaseModel):
+    session_id: int
+    officer_id: int
+
+@router.post("/end_session")
+def end_session(request: EndSessionRequest, db: Session = Depends(get_db)):
+    """
+    Finalizes the session in the database and cleans up global memory dictionaries 
+    to prevent OOM errors over long uptimes.
+    """
+    # 1. Update Database
+    session = db.query(models.InterviewSession).filter(models.InterviewSession.id == request.session_id).first()
+    if session and not session.end_time:
+        import datetime
+        session.end_time = datetime.datetime.utcnow()
+        
+        # Audit Log
+        log_entry = audit_logger.create_log_entry(
+            event_type="SESSION_ENDED",
+            user_id=str(request.officer_id),
+            data={"session_id": request.session_id}
+        )
+        db_log = models.AuditLog(**log_entry)
+        db.add(db_log)
+        db.commit()
+
+    # 2. Prevent Memory Leaks
+    from api.api_v1.endpoints.inference import baseline_engines
+    if request.session_id in baseline_engines:
+        del baseline_engines[request.session_id]
+
+    return {"message": "Session ended cleanly"}
+
 class ExportRequest(BaseModel):
     session_id: int
     requesting_officer_id: int
