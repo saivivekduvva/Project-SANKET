@@ -29,11 +29,13 @@ function App() {
   const sessionIdRef = useRef(null);
 
   const handleStartRecording = () => {
+    if (sessionActive) stopSession();
     setUploadedFile(null);
     setShowConsentModal(true);
   };
 
   const handleUploadData = () => {
+    if (sessionActive) stopSession();
     document.getElementById('data-upload-input').click();
   };
 
