@@ -20,8 +20,11 @@ class AudioPipeline:
         
         # 1. ASR (Whisper) - Track 2
         # Use beam_size=1 for greedy decoding to minimize latency
-        segments, info = self.model.transcribe(audio_data, beam_size=5)
-        transcript = " ".join([segment.text for segment in segments]).strip()
+        # Prevent hallucinations on silence by filtering no_speech_prob
+        segments, info = self.model.transcribe(audio_data, beam_size=5, condition_on_previous_text=False)
+        
+        valid_segments = [s.text for s in segments if getattr(s, 'no_speech_prob', 0.0) < 0.6]
+        transcript = " ".join(valid_segments).strip()
         
         # Map common ISO codes to display names
         lang_map = {
@@ -60,8 +63,12 @@ class AudioPipeline:
         """Transcribes an audio file path directly"""
         results = {}
         try:
-            segments, info = self.model.transcribe(file_path, beam_size=5)
-            transcript = " ".join([segment.text for segment in segments]).strip()
+            # Prevent hallucinations on silence by setting condition_on_previous_text=False 
+            # and filtering out segments with high no_speech_prob
+            segments, info = self.model.transcribe(file_path, beam_size=5, condition_on_previous_text=False)
+            
+            valid_segments = [s.text for s in segments if getattr(s, 'no_speech_prob', 0.0) < 0.6]
+            transcript = " ".join(valid_segments).strip()
             
             lang_map = {
                 'en': 'English', 'hi': 'Hindi', 'bn': 'Bengali', 'ta': 'Tamil', 
