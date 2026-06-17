@@ -142,6 +142,21 @@ function App() {
       videoRef.current.src = fileUrl;
       videoRef.current.srcObject = null;
       
+      // Strict Anti-Scrubbing Mechanism for Telemetry Integrity
+      let lastTime = 0;
+      videoRef.current.ontimeupdate = () => {
+        if (videoRef.current && !videoRef.current.seeking) {
+          lastTime = videoRef.current.currentTime;
+        }
+      };
+      
+      videoRef.current.onseeking = () => {
+        if (videoRef.current && Math.abs(videoRef.current.currentTime - lastTime) > 0.5) {
+          videoRef.current.currentTime = lastTime;
+          // Could also show a toast notification here if we had one
+        }
+      };
+      
       videoRef.current.onplay = () => {
         // Prevent multiple triggers when unpausing by removing the listener
         videoRef.current.onplay = null;
