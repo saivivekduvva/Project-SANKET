@@ -219,3 +219,35 @@ button.outline:hover {
     margin-bottom: 2rem;
   }
 }
+
+/* Print Styles for PDF Export */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  .nav, 
+  button, 
+  .export-form {
+    display: none !important;
+  }
+  
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  .print-only {
+    display: block !important;
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 2px dashed #000;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}
