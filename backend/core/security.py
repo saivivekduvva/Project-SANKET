@@ -61,7 +61,8 @@ def get_inadmissibility_signature(data_payload: str) -> str:
     signature = hmac.new(settings.SECRET_KEY.encode(), content_to_sign.encode(), hashlib.sha256).hexdigest()
     
     return {
-        "header": tag,
+        "legal_disclaimer": tag,
+        "data": data_payload,
         "signature": signature
     }
 

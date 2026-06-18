@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Lock, AlertTriangle, Download, RefreshCw, Trash2, Key } from 'lucide-react';
 
-const PostSessionSummary = ({ telemetryData, onReset }) => {
+const PostSessionSummary = ({ telemetryData, sessionId, onReset }) => {
   const [showExportForm, setShowExportForm] = useState(false);
   const [authorizingOfficerId, setAuthorizingOfficerId] = useState('');
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -19,10 +19,10 @@ const PostSessionSummary = ({ telemetryData, onReset }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          session_id: 1,
+          session_id: sessionId || 1,
           requesting_officer_id: 1234, // Mocked IO
           authorizing_officer_id: parseInt(authorizingOfficerId),
-          data_payload: "Session 1 Telemetry Data"
+          data_payload: JSON.stringify(telemetryData)
         })
       });
       
@@ -30,9 +30,17 @@ const PostSessionSummary = ({ telemetryData, onReset }) => {
         const signedData = await response.json();
         setSignatureData(signedData);
         setExportSuccess(true);
-        setTimeout(() => {
-          window.print(); // Trigger PDF print with signed data
-        }, 500);
+        
+        // Trigger download
+        const blob = new Blob([JSON.stringify(signedData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SANKET_Session_Report_${new Date().getTime()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       } else {
         alert("Export failed: Ensure requesting and authorizing officers are different.");
       }

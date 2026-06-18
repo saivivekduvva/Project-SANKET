@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from core.config import settings
 from db.database import engine
 from db import models
-from api.api_v1.endpoints import compliance, inference
+from api.api_v1.endpoints import compliance, inference, explainability
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
@@ -27,6 +27,7 @@ app.add_middleware(
 # Include Routers
 app.include_router(compliance.router, prefix=f"{settings.API_V1_STR}/compliance", tags=["compliance"])
 app.include_router(inference.router, prefix=f"{settings.API_V1_STR}/inference", tags=["inference"])
+app.include_router(explainability.router, prefix=f"{settings.API_V1_STR}/explainability", tags=["explainability"])
 
 @app.get("/")
 def read_root():

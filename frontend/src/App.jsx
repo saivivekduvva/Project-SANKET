@@ -477,7 +477,7 @@ function App() {
         </section>
 
         {sessionEnded ? (
-          <PostSessionSummary telemetryData={telemetryData} onReset={resetToHome} />
+          <PostSessionSummary telemetryData={telemetryData} sessionId={sessionIdRef.current} onReset={resetToHome} />
         ) : (
           <>
             <section className="responsive-grid">
