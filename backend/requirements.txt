@@ -9,6 +9,7 @@ pydantic-settings
 cryptography
 python-multipart
 psycopg2-binary
+python-dotenv
 
 # Phase 2: Multimodal Pipeline
 mediapipe
@@ -16,6 +17,7 @@ faster-whisper
 opencv-python
 librosa
 soundfile
+numpy
 
 # PyTorch (CUDA 12.1 for RTX 4050)
 torch

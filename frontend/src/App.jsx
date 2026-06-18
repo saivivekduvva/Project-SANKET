@@ -30,6 +30,9 @@ function App() {
   
   // Guard flag to prevent network requests from piling up and returning out-of-order
   const isProcessingFrameRef = useRef(false);
+  
+  // Guard flag to prevent audio loops from continuing after distress halt
+  const isHaltedRef = useRef(false);
 
   const handleStartRecording = () => {
     if (sessionActive) stopSession();
@@ -176,6 +179,7 @@ function App() {
         setSessionEnded(false);
         setTelemetryData([]);
         setLiveLines([]);
+        isHaltedRef.current = false;
         
         // 2. Start polling the backend every 500ms (2 FPS for prototype)
         pollingRef.current = setInterval(captureAndSendFrame, 500);
@@ -183,8 +187,8 @@ function App() {
         // 3. Start Audio Recording (5-second chunks with valid headers)
         try {
           const startRecordingChunk = () => {
-            // Check if stream is still alive before creating a new recorder
-            if (!streamRef.current || !streamRef.current.active) return;
+            // Check if stream is alive and session hasn't been halted
+            if (!streamRef.current || !streamRef.current.active || isHaltedRef.current) return;
             
             // Check if there's an audio track
             const audioTracks = streamRef.current.getAudioTracks();
@@ -208,8 +212,8 @@ function App() {
             setTimeout(() => {
               if (mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
-                // Recursively start the next chunk if the session is still active
-                if (streamRef.current && streamRef.current.active) {
+                // Recursively start the next chunk if the session is still active and not halted
+                if (streamRef.current && streamRef.current.active && !isHaltedRef.current) {
                    startRecordingChunk();
                 }
               }
@@ -272,7 +276,11 @@ function App() {
         body: JSON.stringify({ session_id: sessionIdRef.current || 1, officer_id: 1234, is_vulnerable: true, reason: "Officer triggered distress halt" })
       });
       setEngineStatus('HALTED (Distress)');
+      isHaltedRef.current = true;
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop(); // Force stop any ongoing audio chunk
+      }
     } catch (err) {
       console.error(err);
     }
